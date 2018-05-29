@@ -3,8 +3,14 @@
 package wumo.util
 
 import java.util.concurrent.ThreadLocalRandom
+import kotlin.math.pow
+import kotlin.math.round
 
 inline fun Rand() = ThreadLocalRandom.current()!!
+fun Double.format(digits: Int): String {
+  val base = 10.0.pow(digits)
+  return String.format("%.${digits}f", round(this * base) / base)
+}
 
 fun <T> argmax_tie_random(set: Array<T>, evaluate: (T) -> Double): T {
   val iterator = set.iterator()

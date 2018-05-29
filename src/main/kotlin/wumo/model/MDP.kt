@@ -2,8 +2,6 @@
 
 package wumo.model
 
-import org.slf4j.LoggerFactory
-
 /**
  * <p>
  * Created on 2017-08-31.

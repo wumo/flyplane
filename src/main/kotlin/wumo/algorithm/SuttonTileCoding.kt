@@ -1,9 +1,11 @@
 package wumo.algorithm
 
 import wumo.model.*
-import org.apache.commons.math3.util.FastMath.*
 import wumo.model.Action
 import wumo.util.tuple2
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
 
 private const val MAXIMUM_CAPACITY = 1 shl 30
 

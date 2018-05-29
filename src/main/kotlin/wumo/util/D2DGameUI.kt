@@ -3,16 +3,16 @@ package wumo.util
 import javafx.application.Application
 import javafx.application.Platform
 import javafx.collections.FXCollections
-import javafx.geometry.Orientation
 import javafx.scene.Scene
 import javafx.scene.canvas.Canvas
 import javafx.scene.canvas.GraphicsContext
 import javafx.scene.chart.*
-import javafx.scene.chart.LineChart
-import javafx.scene.layout.FlowPane
+import javafx.scene.layout.HBox
+import javafx.scene.layout.TilePane
 import javafx.stage.Stage
 import wumo.util.resource.ResourceLoader
 import java.util.concurrent.CyclicBarrier
+
 
 sealed class ChartDescription(val title: String,
                               val xAxisLabel: String, val yAxisLabel: String,
@@ -21,6 +21,15 @@ sealed class ChartDescription(val title: String,
                               val yForceZeroInRange: Boolean = true)
 
 class LineChartDescription(title: String,
+                           xAxisLabel: String, yAxisLabel: String,
+                           numSeries: Int = 1,
+                           xForceZeroInRange: Boolean = true,
+                           yForceZeroInRange: Boolean = true) :
+    ChartDescription(title, xAxisLabel, yAxisLabel, numSeries, xForceZeroInRange, yForceZeroInRange) {
+  val data = Array(numSeries) { FXCollections.observableArrayList<XYChart.Data<Number, Number>>()!! }
+}
+
+class AreaChartDescription(title: String,
                            xAxisLabel: String, yAxisLabel: String,
                            numSeries: Int = 1,
                            xForceZeroInRange: Boolean = true,
@@ -41,6 +50,7 @@ class BarChartDescription(title: String,
     ChartDescription(title, xAxisLabel, yAxisLabel, numSeries, xForceZeroInRange, yForceZeroInRange) {
   val data = Array(numSeries) { FXCollections.observableArrayList<XYChart.Data<String, Number>>()!! }
 }
+
 
 class D2DGameUI : Application() {
   
@@ -64,9 +74,8 @@ class D2DGameUI : Application() {
     primaryStage = ps!!
     
     primaryStage.title = title
-    val root = FlowPane(Orientation.HORIZONTAL)
-    canvas = Canvas(canvas_width, canvas_height)
-    root.children.add(canvas)
+    val chartGroup = TilePane()
+    chartGroup.prefColumns = 2 //preferred columns
     for (c in charts) {
       val chart = when (c) {
         is LineChartDescription ->
@@ -77,10 +86,25 @@ class D2DGameUI : Application() {
                         add(XYChart.Series("$i", d))
                     }).apply {
             title = c.title
+            isLegendVisible = false
             createSymbols = false
             animated = false
             stylesheets.add(ResourceLoader.getResource("StockLineChart.css").toExternalForm())
           }
+        is AreaChartDescription -> {
+          AreaChart(NumberAxis().apply { label = c.xAxisLabel;isForceZeroInRange = c.xForceZeroInRange },
+                    NumberAxis().apply { label = c.yAxisLabel;isForceZeroInRange = c.yForceZeroInRange },
+                    FXCollections.observableArrayList<XYChart.Series<Number, Number>>().apply {
+                      for ((i, d) in c.data.withIndex())
+                        add(XYChart.Series("$i", d))
+                    }).apply {
+            title = c.title
+            isLegendVisible = false
+            createSymbols = false
+            animated = false
+            stylesheets.add(ResourceLoader.getResource("StockLineChart.css").toExternalForm())
+          }
+        }
         is BarChartDescription ->
           BarChart(CategoryAxis().apply { label = c.xAxisLabel },
                    NumberAxis().apply {
@@ -97,12 +121,15 @@ class D2DGameUI : Application() {
                        add(XYChart.Series("$i", d))
                    }).apply {
             title = c.title
+            isLegendVisible = false
             stylesheets.add(ResourceLoader.getResource("StockLineChart.css").toExternalForm())
           }
       }
-      root.children.add(chart)
+      chartGroup.children.add(chart)
     }
-    
+    val root = HBox()
+    canvas = Canvas(canvas_width, canvas_height)
+    root.children.addAll(canvas, chartGroup)
     primaryStage.scene = Scene(root, width, height)
     primaryStage.show()
     render = this::render
@@ -111,14 +138,14 @@ class D2DGameUI : Application() {
   
   val barrier = CyclicBarrier(2)
   fun render(draw: (GraphicsContext) -> Unit = {}) {
-    barrier.reset()
+//    barrier.reset()
     Platform.runLater {
       val gc = canvas.graphicsContext2D
       draw(gc)
       primaryStage.title = title
-      barrier.await()
+//      barrier.await()
     }
-    barrier.await()
+//    barrier.await()
   }
   
 }
