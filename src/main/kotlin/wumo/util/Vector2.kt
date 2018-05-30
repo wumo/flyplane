@@ -1,8 +1,12 @@
+@file:Suppress("NOTHING_TO_INLINE")
+
 package wumo.util
 
 import kotlin.math.PI
 import kotlin.math.sqrt
 
+inline fun Double.toRadian() = this / 180 * PI
+inline fun Double.toDegree() = this * 180 / PI
 data class Vector2(var x: Double = 0.0, var y: Double = 0.0) {
   companion object {
     fun zero() = Vector2(0.0, 0.0)
@@ -71,8 +75,8 @@ data class Vector2(var x: Double = 0.0, var y: Double = 0.0) {
   /** @return the angle in degrees of this vector (point) relative to the x-axis. Angles are towards the positive y-axis
    *         (typically counter-clockwise) and between 0 and 360. */
   fun angle(): Double {
-    var angle = Math.atan2(y, x).toFloat() * 180f / PI
-    if (angle < 0) angle += 360f
+    var angle = Math.atan2(y, x).toDegree()
+    if (angle < 0) angle += 360
     return angle
   }
   
@@ -81,7 +85,7 @@ data class Vector2(var x: Double = 0.0, var y: Double = 0.0) {
   }
   
   fun rotate(degrees: Double): Vector2 {
-    val radians = degrees * 180f / PI
+    val radians = degrees.toRadian()
     val cos = Math.cos(radians)
     val sin = Math.sin(radians)
     
@@ -92,5 +96,10 @@ data class Vector2(var x: Double = 0.0, var y: Double = 0.0) {
     y = newY
     
     return this
+  }
+  
+  fun plus(x: Double, y: Double) {
+    this.x += x
+    this.y += y
   }
 }

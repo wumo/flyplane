@@ -7,6 +7,7 @@ import javafx.scene.Scene
 import javafx.scene.canvas.Canvas
 import javafx.scene.canvas.GraphicsContext
 import javafx.scene.chart.*
+import javafx.scene.control.ScrollPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.TilePane
 import javafx.stage.Stage
@@ -74,7 +75,9 @@ class D2DGameUI : Application() {
     primaryStage = ps!!
     
     primaryStage.title = title
+    val scrollPane = ScrollPane()
     val chartGroup = TilePane()
+    scrollPane.content = chartGroup
     chartGroup.prefColumns = 2 //preferred columns
     for (c in charts) {
       val chart = when (c) {
@@ -129,8 +132,9 @@ class D2DGameUI : Application() {
     }
     val root = HBox()
     canvas = Canvas(canvas_width, canvas_height)
-    root.children.addAll(canvas, chartGroup)
+    root.children.addAll(canvas, scrollPane)
     primaryStage.scene = Scene(root, width, height)
+    primaryStage.isMaximized = true
     primaryStage.show()
     render = this::render
     afterStartup(canvas.graphicsContext2D)

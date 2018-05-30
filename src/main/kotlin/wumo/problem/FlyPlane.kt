@@ -4,12 +4,11 @@ package wumo.problem
 
 import wumo.model.*
 import wumo.model.Possible
-import wumo.util.Rand
-import wumo.util.Vector2
+import wumo.util.*
 import wumo.util.Vector2.Companion.ZERO
-import wumo.util.max
-import wumo.util.rand
-import kotlin.math.exp
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 object FlyPlane {
   data class RigidBody(val loc: Vector2, val radius: Double)
@@ -22,7 +21,7 @@ object FlyPlane {
   private val max_acc = 1.0 * scale
   val target = RigidBody(Vector2(fieldWidth - 50 * scale, 50.0 * scale), 50.0 * scale)
   val plane = RigidBody(Vector2(0.0, fieldWidth), 20.0 * scale)
-  private val initVel = Vector2(7.0 * scale, -7.0 * scale)
+  private val initVel = Vector2(10.0 * scale, 45.0)
   private val maxFuel = 10000.0 * scale
   var maxStage: Int = 5
   var numObstaclesPerStage = 1
@@ -30,44 +29,55 @@ object FlyPlane {
   lateinit var winsPerStage: IntArray
   lateinit var visitsPerStage: IntArray
   private var γ: Double = 1.0
+  val terminalState = PlaneState(Vector2(), Vector2(), 0.0, -1, true)
   
   class PlaneState(
       val loc: Vector2,
       val vel: Vector2,
       val fuel: Double,
-      val stage: Int
+      val stage: Int,
+      val nextTerminal: Boolean
   ) : State {
     override val actions: Array<Action<State>>? =
         if (stage == -1) null
         else Array(numActions) {
           val a = it
-          DefaultAction(a) {
-            val nextLoc = loc.copy()
-            val nextVel = vel.copy()
-            var nextFuel: Double
-            var nextStage = stage
-            var reward: Double
+          DefaultAction(a, fun(): Possible<State> {
+            if (nextTerminal)
+              return Possible(terminalState, 0.0)
             if (collide(loc, target)) {
               winsPerStage[stage]++
-              nextLoc.set(plane.loc)
-              nextVel.set(initVel)
-              nextFuel = maxFuel
-              nextStage = if (stage + 1 < maxStage) stage + 1 else -1
-              if (nextStage != -1) visitsPerStage[nextStage]++
-              reward = 0.0
+              val nextStage = if (stage + 1 < maxStage) stage + 1 else -1
+              return Possible(if (nextStage == -1) terminalState
+                              else PlaneState(plane.loc, initVel, maxFuel, nextStage, true), 0.0)
             } else {
-              repeat(numSimulation) {
+              val nextLoc = loc.copy()
+              val nextVel = vel.copy()
+              val (v, θ) = nextVel
+              var nextFuel: Double
+              var nextStage = stage
+              var reward: Double
+              if (a == 0)
+                nextLoc.plus(Δt * v * cos(θ), Δt * v * sin(θ))
+              else {
+                val w = max_acc / v
+                val Δθ = w * Δt
+                val R = v * v / max_acc
                 val dir = nextVel.copy().norm()
-                val acc = when (a) {
-                  1 -> //left
-                    dir.rot90L() * max_acc
-                  2 -> //right
-                    dir.rot90R() * max_acc
-                  else ->//no op
-                    ZERO
+                when (a) {
+                  1 -> { //left
+                    nextVel.y = (θ + Δθ) % (2 * PI)
+                    dir.rot90L() *= -R
+                    nextLoc += dir.rotate(Δθ)
+                  }
+                  2 -> { //right
+                    nextVel.y = (θ - Δθ) % (2 * PI)
+                    dir.rot90R() * -R
+                    nextLoc += dir.rotate(-Δθ)
+                  }
                 }
-                nextLoc += nextVel * Δt + acc * (Δt * Δt * 0.5)
-                nextVel += acc * Δt
+//                nextLoc += nextVel * Δt + center * (Δt * Δt * 0.5)
+//                nextVel += center * Δt
               }
               nextFuel = fuel - 1.0 * scale
               val obstacles = stageObstacles[stage]
@@ -90,9 +100,10 @@ object FlyPlane {
                   nextStage = stage
                 }
               }
+              return Possible(if (nextStage == -1) terminalState
+                              else PlaneState(nextLoc, nextVel, nextFuel, nextStage, false), reward)
             }
-            Possible(PlaneState(nextLoc, nextVel, nextFuel, nextStage), reward)
-          }
+          })
         }
     
   }
@@ -117,7 +128,7 @@ object FlyPlane {
     FlyPlane.numObstaclesPerStage = numObstaclesPerStage + 1
     FlyPlane.γ = γ
     val randRadius = {
-      if (Rand().nextBoolean()) 0.0 else Rand().nextDouble(0.0, maxObstacleRadius)
+      Rand().nextDouble(0.0, maxObstacleRadius)
     }
     stageObstacles = Array(maxStage) {
       Array(numObstaclesPerStage) {
@@ -148,7 +159,8 @@ object FlyPlane {
       PlaneState(loc = plane.loc,
                  vel = initVel,
                  fuel = maxFuel,
-                 stage = start)
+                 stage = start,
+                 nextTerminal = false)
     }
   }
 }

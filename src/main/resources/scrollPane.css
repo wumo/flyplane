@@ -1,0 +1,4 @@
+.scroll-pane .scroll-bar {
+    -fx-unit-increment: 50;
+    -fx-block-increment: 20;
+}

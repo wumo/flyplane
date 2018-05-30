@@ -9,11 +9,16 @@ import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import wumo.algorithm.*
 import wumo.model.DefaultAction
+import wumo.model.isTerminal
 import wumo.problem.FlyPlane
 import wumo.util.AreaChartDescription
 import wumo.util.D2DGameUI
+import wumo.util.D2DGameUI.Companion.afterStartup
 import wumo.util.D2DGameUI.Companion.canvas_height
 import wumo.util.D2DGameUI.Companion.canvas_width
+import wumo.util.D2DGameUI.Companion.charts
+import wumo.util.D2DGameUI.Companion.height
+import wumo.util.D2DGameUI.Companion.width
 import wumo.util.LineChartDescription
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
@@ -34,9 +39,13 @@ var maxObstacleRadius = 100.0
 inline fun setting_100_30() {
   FlyPlane.maxStage = 100
   FlyPlane.numObstaclesPerStage = 30
+  maxObstacleRadius = 50.0
+  
   numTilesPerTiling = 40_0000
   _numTilings = 16
-  maxObstacleRadius = 50.0
+  episode_round = 100
+  step_round = 100
+  max_episode = 100_0000
 }
 
 inline fun setting_10_30() {
@@ -71,11 +80,11 @@ inline fun setting_2_30() {
   FlyPlane.numObstaclesPerStage = 30
   maxObstacleRadius = 50.0
   
-  numTilesPerTiling = 2_0000
+  numTilesPerTiling = 20_0000
   _numTilings = 16
   episode_round = 100
   step_round = 100
-  max_episode = 10000
+  max_episode = 20000
 }
 
 inline fun custom_setting() {
@@ -94,7 +103,6 @@ fun main(args: Array<String>) {
   setting_2_30()
 //  custom_setting()
   val resolution = 100
-  val vel_resolution = 10
   val unit = FlyPlane.fieldWidth / resolution
   val m = ceil(sqrt(FlyPlane.maxStage.toDouble())).toInt()
   val stageWidth = FlyPlane.fieldWidth / m
@@ -102,12 +110,11 @@ fun main(args: Array<String>) {
   fun Double.transX(stage: Int) = stageWidth * (stage % m) + this * stageScale
   fun Double.transY(stage: Int) = stageWidth * (stage / m) + this * stageScale
   fun Double.tranUnit() = this * stageScale
-  
   val feature = SuttonTileCoding(numTilesPerTiling = numTilesPerTiling, _numTilings = _numTilings, allowCollisions = true) { s, a, tilesFunc ->
     s as FlyPlane.PlaneState
     a as DefaultAction<Int, FlyPlane.PlaneState>
     val floats = ArrayList<Double>(FlyPlane.numObstaclesPerStage + 4).apply {
-      add(s.loc.x / resolution);add(s.loc.y / resolution);add(s.vel.x / vel_resolution);add(s.vel.y / vel_resolution)
+      add(s.loc.x / resolution);add(s.loc.y / resolution);add(s.vel.x);add(s.vel.y / 10)
       for (i in 0 until FlyPlane.numObstaclesPerStage) {
         val obstacle = FlyPlane.stageObstacles[s.stage][i]
         add(obstacle.loc.x / resolution);add(obstacle.loc.y / resolution);add(obstacle.radius / resolution)
@@ -115,6 +122,7 @@ fun main(args: Array<String>) {
     }.toDoubleArray()
     tilesFunc(floats, intArrayOf(a.value))
   }
+  
   val func = LinearTileCodingFunc(feature)
   val numTilings = feature.numTilings
   
@@ -137,6 +145,10 @@ fun main(args: Array<String>) {
     var last = System.currentTimeMillis()
     var stepSum = 0
     val preWinsPerStage = IntArray(FlyPlane.maxStage)
+    val winRate = DoubleArray(FlyPlane.maxStage)
+    val preVisitsPerStage = IntArray(FlyPlane.maxStage)
+    val changedEpisode = IntArray(FlyPlane.maxStage)
+    val αStage = DoubleArray(FlyPlane.maxStage) { _α }
     val episodeListener: EpisodeListener = { episode, step, st ->
       stepSum += step
       st as FlyPlane.PlaneState
@@ -173,16 +185,21 @@ fun main(args: Array<String>) {
           (D2DGameUI.charts[1] as AreaChartDescription).data.apply {
             if (this[0].isEmpty())
               for (i in 0 until FlyPlane.maxStage) {
-                this[0].add(XYChart.Data(i, (FlyPlane.winsPerStage[i] - preWinsPerStage[i]) / episode_round.toDouble()))
+                val visits = maxOf(FlyPlane.visitsPerStage[i] - preVisitsPerStage[i], 1)
+                winRate[i] = (FlyPlane.winsPerStage[i] - preWinsPerStage[i]) / visits.toDouble()
+                this[0].add(XYChart.Data(i, winRate[i]))
                 preWinsPerStage[i] = FlyPlane.winsPerStage[i]
               }
             else
               for (i in 0 until FlyPlane.maxStage) {
-                this[0][i].yValue = (FlyPlane.winsPerStage[i] - preWinsPerStage[i]) / episode_round.toDouble()
+                val visits = maxOf(FlyPlane.visitsPerStage[i] - preVisitsPerStage[i], 1)
+                winRate[i] = (FlyPlane.winsPerStage[i] - preWinsPerStage[i]) / visits.toDouble()
+                this[0][i].yValue = winRate[i]
                 preWinsPerStage[i] = FlyPlane.winsPerStage[i]
               }
           }
           (D2DGameUI.charts[2] as AreaChartDescription).data.apply {
+            System.arraycopy(FlyPlane.visitsPerStage, 0, preVisitsPerStage, 0, FlyPlane.maxStage)
             if (this[0].isEmpty())
               for (i in 0 until FlyPlane.maxStage)
                 this[0].add(XYChart.Data(i, FlyPlane.visitsPerStage[i]))
@@ -206,6 +223,14 @@ fun main(args: Array<String>) {
           (D2DGameUI.charts[4] as LineChartDescription).data.apply {
             this[0].add(XYChart.Data(episode, feature.numOfComponents))
             this[1].add(XYChart.Data(episode, feature.data.size))
+          }
+          (D2DGameUI.charts[6] as AreaChartDescription).data.apply {
+            if (this[0].isEmpty())
+              for (i in 0 until FlyPlane.maxStage)
+                this[0].add(XYChart.Data(i, αStage[i]))
+            else
+              for (i in 0 until FlyPlane.maxStage)
+                this[0][i].yValue = αStage[i]
           }
         }
         if (animate)
@@ -290,12 +315,16 @@ fun main(args: Array<String>) {
         Qfunc = func,
         π = EpsilonGreedyFunctionPolicy(func, ε),
         λ = 0.96,
-        α = {
-          if (it > 0 && it % α_episode == 0) {
-            _α *= 0.8
-            println(_α)
+        α = { startState, episode ->
+          startState as FlyPlane.PlaneState
+          val i = startState.stage
+          if (winRate[i] > 0.0) {
+            if ((episode - changedEpisode[i]) > α_episode) {
+              αStage[i] *= 0.9
+              changedEpisode[i] = episode
+            }
           }
-          _α / numTilings
+          αStage[i] / numTilings
         },
         episodes = max_episode,
         episodeListener = episodeListener,
@@ -325,7 +354,10 @@ fun main(args: Array<String>) {
                   LineChartDescription("number of features", "episode", "features",
                                        numSeries = 2, yForceZeroInRange = false),
                   LineChartDescription("speed of training", "time(s)", "speed(steps/s)",
-                                       numSeries = 1, yForceZeroInRange = false))
+                                       numSeries = 1, yForceZeroInRange = false),
+                  AreaChartDescription("α per stage", "stage", "α",
+                                       numSeries = FlyPlane.maxStage)
+    )
     afterStartup = { gc ->
       gc.font = Font("Arial", 20.0)
       latch.countDown()

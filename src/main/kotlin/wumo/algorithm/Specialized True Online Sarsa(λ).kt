@@ -51,7 +51,7 @@ inline fun MDP.`Specialized True Online Sarsa(λ)`(
     Qfunc: LinearTileCodingFunc,
     π: EpsilonGreedyFunctionPolicy,
     λ: Double,
-    α: (Int) -> Double,
+    α: (State, Int) -> Double,
     episodes: Int,
     maxStep: Int = Int.MAX_VALUE,
     episodeListener: EpisodeListener = { _, _, _ -> },
@@ -68,7 +68,7 @@ inline fun MDP.`Specialized True Online Sarsa(λ)`(
     var x = X(s, a)
     z.clear()
     var Q_old = 0.0
-    val α = α(episode)
+    val α = α(s, episode)
     while (true) {
       stepListener(episode, step, s, a)
       step++
