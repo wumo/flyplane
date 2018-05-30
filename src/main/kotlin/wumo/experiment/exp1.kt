@@ -20,17 +20,16 @@ import wumo.util.D2DGameUI.Companion.charts
 import wumo.util.D2DGameUI.Companion.height
 import wumo.util.D2DGameUI.Companion.width
 import wumo.util.LineChartDescription
+import wumo.util.Vector2
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
-import kotlin.math.ceil
-import kotlin.math.floor
-import kotlin.math.sqrt
+import kotlin.math.*
 
 var numTilesPerTiling = 1000
 var _numTilings = 16
 var episode_round = 100
 var step_round = 2000
-var max_episode = 20000000
+var max_episode = 2000_0000
 var ε = 0.1
 var _α = 0.6
 var α_episode = 1000
@@ -41,11 +40,11 @@ inline fun setting_100_30() {
   FlyPlane.numObstaclesPerStage = 30
   maxObstacleRadius = 50.0
   
-  numTilesPerTiling = 40_0000
+  numTilesPerTiling = 8_0000
   _numTilings = 16
   episode_round = 100
   step_round = 100
-  max_episode = 100_0000
+  max_episode = 2000_0000
 }
 
 inline fun setting_10_30() {
@@ -80,11 +79,11 @@ inline fun setting_2_30() {
   FlyPlane.numObstaclesPerStage = 30
   maxObstacleRadius = 50.0
   
-  numTilesPerTiling = 20_0000
+  numTilesPerTiling = 4_0000
   _numTilings = 16
   episode_round = 100
   step_round = 100
-  max_episode = 20000
+  max_episode = 2_0000
 }
 
 inline fun custom_setting() {
@@ -97,10 +96,10 @@ inline fun custom_setting() {
 }
 
 fun main(args: Array<String>) {
-//  setting_100_30()
+  setting_100_30()
 //  setting_10_10()
 //  setting_1_6()
-  setting_2_30()
+//  setting_2_30()
 //  custom_setting()
   val resolution = 100
   val unit = FlyPlane.fieldWidth / resolution
@@ -141,6 +140,8 @@ fun main(args: Array<String>) {
     val iy = Math.floor(FlyPlane.plane.loc.y / unit).toInt()
     var oMax: Double
     var oMin: Double
+    var mMax = Double.NEGATIVE_INFINITY
+    var mMin = Double.POSITIVE_INFINITY
     val start = System.currentTimeMillis()
     var last = System.currentTimeMillis()
     var stepSum = 0
@@ -243,8 +244,11 @@ fun main(args: Array<String>) {
       
       val cx = floor(s.loc.x / unit).toInt()
       val cy = floor(s.loc.y / unit).toInt()
-      if (s.stage != -1)
+      if (s.stage != -1) {
         qvalue[s.stage][cx][cy] = func(s, a)
+        mMax = maxOf(mMax, qvalue[s.stage][cx][cy])
+        mMin = minOf(mMin, qvalue[s.stage][cx][cy])
+      }
 //        qvalue[s.stage][cx][cy] = maxOf(qvalue[s.stage][cx][cy], func(s, a))
       if (episode % step_round != 0) return@step
       if (!animate && step > 1) return@step
@@ -297,7 +301,8 @@ fun main(args: Array<String>) {
         }
         with(s) {
           gc.fill = Color.ORANGE
-          val dir = s.vel.copy().norm() * FlyPlane.plane.radius
+          val vel = Vector2(s.vel.x * cos(s.vel.y), s.vel.x * sin(s.vel.y))
+          val dir = vel.norm() * FlyPlane.plane.radius
           val top = s.loc + dir
           val left = s.loc + (dir / 2.0).rot90L()
           val right = s.loc + (dir / 2.0).rot90R()
@@ -307,7 +312,7 @@ fun main(args: Array<String>) {
         }
       }
       if (animate)
-        Thread.sleep((1.0 / 60 * 1000).toLong())
+        Thread.sleep((1.0 / 10 * 1000).toLong())
     }
     val prob = FlyPlane.makeRand(maxObstacleRadius)
     animate = false
@@ -315,22 +320,26 @@ fun main(args: Array<String>) {
         Qfunc = func,
         π = EpsilonGreedyFunctionPolicy(func, ε),
         λ = 0.96,
-        α = { startState, episode ->
-          startState as FlyPlane.PlaneState
-          val i = startState.stage
-          if (winRate[i] > 0.0) {
-            if ((episode - changedEpisode[i]) > α_episode) {
-              αStage[i] *= 0.9
-              changedEpisode[i] = episode
-            }
-          }
-          αStage[i] / numTilings
+        α = { _, _ ->
+          _α / numTilings
         },
+//        α = { startState, episode ->
+//          startState as FlyPlane.PlaneState
+//          val i = startState.stage
+//          if (winRate[i] > 0.0) {
+//            if ((episode - changedEpisode[i]) > α_episode) {
+//              αStage[i] *= 0.9
+//              changedEpisode[i] = episode
+//            }
+//          }
+//          αStage[i] / numTilings
+//        },
         episodes = max_episode,
         episodeListener = episodeListener,
         stepListener = stepListener
     )
     animate = true
+    step_round = 1
     prob.Play(
         π = EpsilonGreedyFunctionPolicy(func, 0.0),
         episodes = max_episode,

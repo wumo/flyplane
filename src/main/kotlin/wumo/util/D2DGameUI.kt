@@ -91,7 +91,7 @@ class D2DGameUI : Application() {
             title = c.title
             isLegendVisible = false
             createSymbols = false
-            animated = false
+            animated = true
             stylesheets.add(ResourceLoader.getResource("StockLineChart.css").toExternalForm())
           }
         is AreaChartDescription -> {
@@ -104,7 +104,7 @@ class D2DGameUI : Application() {
             title = c.title
             isLegendVisible = false
             createSymbols = false
-            animated = false
+            animated = true
             stylesheets.add(ResourceLoader.getResource("StockLineChart.css").toExternalForm())
           }
         }
@@ -125,6 +125,7 @@ class D2DGameUI : Application() {
                    }).apply {
             title = c.title
             isLegendVisible = false
+            animated = true
             stylesheets.add(ResourceLoader.getResource("StockLineChart.css").toExternalForm())
           }
       }

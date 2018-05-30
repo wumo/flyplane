@@ -4,6 +4,7 @@ package wumo.problem
 
 import wumo.model.*
 import wumo.model.Possible
+import wumo.problem.FlyPlane.maxStage
 import wumo.util.*
 import wumo.util.Vector2.Companion.ZERO
 import kotlin.math.PI
@@ -21,7 +22,7 @@ object FlyPlane {
   private val max_acc = 1.0 * scale
   val target = RigidBody(Vector2(fieldWidth - 50 * scale, 50.0 * scale), 50.0 * scale)
   val plane = RigidBody(Vector2(0.0, fieldWidth), 20.0 * scale)
-  private val initVel = Vector2(10.0 * scale, 45.0)
+  private val initVel = Vector2(10.0 * scale, (-45.0).toRadian())
   private val maxFuel = 10000.0 * scale
   var maxStage: Int = 5
   var numObstaclesPerStage = 1
@@ -63,17 +64,21 @@ object FlyPlane {
                 val w = max_acc / v
                 val Δθ = w * Δt
                 val R = v * v / max_acc
-                val dir = nextVel.copy().norm()
+                
                 when (a) {
                   1 -> { //left
+                    val angle = θ + PI / 2 + PI + Δθ
+                    val angle2 = θ + PI / 2
+                    val dir = Vector2(R * (cos(angle) + cos(angle2)), R * (sin(angle) + sin(angle2)))
+                    nextLoc += dir
                     nextVel.y = (θ + Δθ) % (2 * PI)
-                    dir.rot90L() *= -R
-                    nextLoc += dir.rotate(Δθ)
                   }
                   2 -> { //right
+                    val angle = θ + PI / 2 - Δθ
+                    val angle2 = θ - PI / 2
+                    val dir = Vector2(R * (cos(angle) + cos(angle2)), R * (sin(angle) + sin(angle2)))
+                    nextLoc += dir
                     nextVel.y = (θ - Δθ) % (2 * PI)
-                    dir.rot90R() * -R
-                    nextLoc += dir.rotate(-Δθ)
                   }
                 }
 //                nextLoc += nextVel * Δt + center * (Δt * Δt * 0.5)
@@ -128,21 +133,15 @@ object FlyPlane {
     FlyPlane.numObstaclesPerStage = numObstaclesPerStage + 1
     FlyPlane.γ = γ
     val randRadius = {
-      Rand().nextDouble(0.0, maxObstacleRadius)
+      if (Rand().nextBoolean()) 0.0 else Rand().nextDouble(0.0, maxObstacleRadius)
     }
     stageObstacles = Array(maxStage) {
       Array(numObstaclesPerStage) {
-        when (it) {
-          0 -> RigidBody(Vector2(50.0 * scale, 50.0 * scale), randRadius())
-          1 -> RigidBody(Vector2(fieldWidth - 50.0 * scale, fieldWidth - 50.0 * scale), randRadius())
-          else -> {
-            val loc = Vector2(Rand().nextDouble(100 * scale, fieldWidth - 100 * scale),
-                              Rand().nextDouble(0 * scale, fieldWidth - 0 * scale))
-            var radius = randRadius()
-            radius = maxOf(0.0, minOf(radius, loc.dist(target.loc) - target.radius))
-            RigidBody(loc, radius)
-          }
-        }
+        var radius = randRadius()
+        val loc = Vector2(Rand().nextDouble(radius + plane.radius * 2, fieldWidth - radius - plane.radius * 2),
+                          Rand().nextDouble(radius + plane.radius * 2, fieldWidth - radius - plane.radius * 2))
+        radius = maxOf(0.0, minOf(radius, loc.dist(target.loc) - target.radius))
+        RigidBody(loc, radius)
       }
     }
     winsPerStage = IntArray(maxStage) { 0 }
