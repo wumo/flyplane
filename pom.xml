@@ -116,6 +116,22 @@
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.excelsiorjet</groupId>
+                <artifactId>excelsior-jet-maven-plugin</artifactId>
+                <version>1.2.0</version>
+                <configuration>
+                    <mainClass>wumo.experiment.Exp1Kt</mainClass>
+                    <!--<runtime>-->
+
+                    <!--</runtime>-->
+                    <!--<globalOptimizer>true</globalOptimizer>-->
+                    <protectData>true</protectData>
+                    <!--<compilerOptions>-->
+                    <!--<compilerOption></compilerOption>-->
+                    <!--</compilerOptions>-->
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
