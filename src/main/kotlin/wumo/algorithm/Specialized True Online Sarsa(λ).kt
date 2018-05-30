@@ -47,11 +47,11 @@ inline fun DoubleArray.scaleAdd(s: Double, x: IntArray) {
     this[i] += s
 }
 
-fun MDP.`Specialized True Online Sarsa(λ)`(
+inline fun MDP.`Specialized True Online Sarsa(λ)`(
     Qfunc: LinearTileCodingFunc,
     π: EpsilonGreedyFunctionPolicy,
     λ: Double,
-    α: Double,
+    α: (Int) -> Double,
     episodes: Int,
     maxStep: Int = Int.MAX_VALUE,
     episodeListener: EpisodeListener = { _, _, _ -> },
@@ -68,6 +68,7 @@ fun MDP.`Specialized True Online Sarsa(λ)`(
     var x = X(s, a)
     z.clear()
     var Q_old = 0.0
+    val α = α(episode)
     while (true) {
       stepListener(episode, step, s, a)
       step++
@@ -94,6 +95,30 @@ fun MDP.`Specialized True Online Sarsa(λ)`(
         w.scaleAdd(α * (δ + Q - Q_old), z)
         w.scaleAdd(-α * (Q - Q_old), x)
       }
+      s = s_next
+    }
+    episodeListener(episode, step, s)
+  }
+}
+
+fun MDP.Play(
+    π: EpsilonGreedyFunctionPolicy,
+    episodes: Int,
+    maxStep: Int = Int.MAX_VALUE,
+    episodeListener: EpisodeListener = { _, _, _ -> },
+    stepListener: StepListener = { _, _, _, _ -> }) {
+  for (episode in 0 until episodes) {
+    println("$episode/$episodes")
+    var step = 0
+    var s = started()
+    var a = π(s)
+    while (true) {
+      stepListener(episode, step, s, a)
+      step++
+      if (s.isTerminal || step >= maxStep) break
+      val (s_next) = a.sample()
+      if (s_next.isNotTerminal)
+        a = π(s_next)
       s = s_next
     }
     episodeListener(episode, step, s)

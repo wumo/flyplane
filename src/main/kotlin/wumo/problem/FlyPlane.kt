@@ -111,20 +111,23 @@ object FlyPlane {
     return false
   }
   
-  fun makeRand(minObstacleRadius: Double = 0.0 * scale,
-               maxObstacleRadius: Double = 100.0 * scale,
+  fun makeRand(maxObstacleRadius: Double = 100.0,
                γ: Double = 1.0): MDP {
+    val maxObstacleRadius = maxObstacleRadius * scale
     FlyPlane.numObstaclesPerStage = numObstaclesPerStage + 1
     FlyPlane.γ = γ
+    val randRadius = {
+      if (Rand().nextBoolean()) 0.0 else Rand().nextDouble(0.0, maxObstacleRadius)
+    }
     stageObstacles = Array(maxStage) {
       Array(numObstaclesPerStage) {
         when (it) {
-          0 -> RigidBody(Vector2(50.0 * scale, 50.0 * scale), if (Rand().nextBoolean()) 0.0 else Rand().nextDouble(minObstacleRadius, maxObstacleRadius))
-          1 -> RigidBody(Vector2(fieldWidth - 50.0 * scale, fieldWidth - 50.0 * scale), if (Rand().nextBoolean()) 0.0 else Rand().nextDouble(minObstacleRadius, maxObstacleRadius))
+          0 -> RigidBody(Vector2(50.0 * scale, 50.0 * scale), randRadius())
+          1 -> RigidBody(Vector2(fieldWidth - 50.0 * scale, fieldWidth - 50.0 * scale), randRadius())
           else -> {
             val loc = Vector2(Rand().nextDouble(100 * scale, fieldWidth - 100 * scale),
                               Rand().nextDouble(0 * scale, fieldWidth - 0 * scale))
-            var radius = Rand().nextDouble(minObstacleRadius, maxObstacleRadius)
+            var radius = randRadius()
             radius = maxOf(0.0, minOf(radius, loc.dist(target.loc) - target.radius))
             RigidBody(loc, radius)
           }
@@ -135,13 +138,12 @@ object FlyPlane {
     visitsPerStage = IntArray(maxStage) { 0 }
     return DefaultMDP(γ) {
       //      var sum = 0.0
-//      for (i in 0 until maxStage) {
-//        sum += exp(-winsPerStage[i].toDouble())
-//      }
-      //      val max = max(0 until maxStage) { winsPerStage[it].toDouble() } + 1
-//      val start = rand(0 until maxStage) { max - winsPerStage[it] }
-//      val start = rand(0 until maxStage) { minOf(0.5, exp(-winsPerStage[it].toDouble()) / sum) }
-      val start = Rand().nextInt(maxStage)
+//      for (i in 0 until maxStage)
+//        sum += exp(-visitsPerStage[i].toDouble())
+      val max = max(0 until maxStage) { visitsPerStage[it].toDouble() } + 1
+      val start = rand(0 until maxStage) { max - visitsPerStage[it] }
+//      val start = rand(0 until maxStage) { exp(-visitsPerStage[it].toDouble()) / sum }
+//      val start = Rand().nextInt(maxStage)
       visitsPerStage[start]++
       PlaneState(loc = plane.loc,
                  vel = initVel,

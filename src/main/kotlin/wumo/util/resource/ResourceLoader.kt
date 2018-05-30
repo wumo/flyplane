@@ -103,7 +103,7 @@ object ResourceLoader {
   fun getResourceAsStream(ref: String): InputStream {
     var `in`: InputStream? = null
     for (i in locations.indices) {
-      val location = locations.get(i) as ResourceLocation
+      val location = locations[i]
       `in` = location.getResourceAsStream(ref)
       if (`in` != null) {
         break
@@ -124,10 +124,10 @@ object ResourceLoader {
    * @return True if the resource can be located
    */
   fun resourceExists(ref: String): Boolean {
-    var url: URL? = null
-    
+    var url: URL?
+  
     for (i in locations.indices) {
-      val location = locations.get(i) as ResourceLocation
+      val location = locations[i]
       url = location.getResource(ref)
       if (url != null) {
         return true
@@ -148,7 +148,7 @@ object ResourceLoader {
     var url: URL? = null
     
     for (i in locations.indices) {
-      val location = locations.get(i) as ResourceLocation
+      val location = locations[i]
       url = location.getResource(ref)
       if (url != null) {
         break
