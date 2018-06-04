@@ -35,7 +35,7 @@ inline fun setting_100_30_demo() {
   _numTilings = 8
   episode_round = 1000
   step_round = 100
-  max_episode = 200_0000
+  max_episode = 20_0000
 }
 
 inline fun setting_100_30_weight() {
@@ -136,8 +136,7 @@ inline fun custom_setting() {
 }
 
 fun main(args: Array<String>) {
-  setting_100_30_weight()
-//  setting_100_30_demo()
+  setting_100_30_demo()
 //  setting_100_30_small()
 //  setting_100_30()
 //  setting_10_10()
@@ -362,6 +361,7 @@ fun main(args: Array<String>) {
         Thread.sleep((1.0 / 10 * 1000).toLong())
     }
     val prob = FlyPlane.makeRand(maxObstacleRadius)
+//    val prob = FlyPlane.makeSpecific()
     animate = false
     FlyPlane.determinedStartScene = -1
     prob.`Specialized True Online Sarsa(λ)`(

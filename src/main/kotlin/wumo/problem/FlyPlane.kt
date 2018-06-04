@@ -2,6 +2,7 @@
 
 package wumo.problem
 
+import wumo.experiment.maxObstacleRadius
 import wumo.model.*
 import wumo.model.Possible
 import wumo.util.*
@@ -47,7 +48,8 @@ object FlyPlane {
               return Possible(terminalState, 0.0)
             if (collide(loc, target)) {
               winsPerScene[scene]++
-              val nextScene = if (scene + 1 < maxScene) scene + 1 else -1
+//              val nextScene = if (scene + 1 < maxScene) scene + 1 else -1
+              val nextScene = -1
               return Possible(if (nextScene == -1) terminalState
                               else PlaneState(plane.loc, initVel, maxFuel, nextScene, true), 0.0)
             } else {
@@ -88,7 +90,9 @@ object FlyPlane {
               nextFuel = fuel - 1.0 * scale
               val obstacles = sceneObstacles[scene]
 //              reward = (loc.dist(target.loc) - nextLoc.dist(target.loc)) * scale
-              reward = (loc.dist(target.loc) - nextLoc.dist(target.loc) - 0.1) * scale
+//              reward = (loc.dist(target.loc) - nextLoc.dist(target.loc) - 0.1) * scale
+//              reward = (loc.dist(target.loc) - nextLoc.dist(target.loc)) * scale
+              reward = 0.0
               when {
                 nextLoc.outOf(0.0, 0.0, fieldWidth, fieldWidth) ||//out of field
                 nextFuel < 0 -> {//out of fuel
@@ -100,8 +104,8 @@ object FlyPlane {
                   nextScene = -1
                 }
                 collide(nextLoc, target) -> {//hit destination
-//                  reward = 2000.0 * scale - (maxFuel - nextFuel)
-                  reward = 2000.0 * scale
+                  reward = 2000.0 * scale - (maxFuel - nextFuel)
+//                  reward = 2000.0 * scale
                   nextLoc.set(target.loc)
                   nextFuel = maxFuel
                   nextVel.set(initVel)
@@ -149,6 +153,40 @@ object FlyPlane {
         radius = maxOf(0.0, minOf(radius, loc.dist(plane.loc) - plane.radius * 2))
         RigidBody(loc, radius)
       }
+    }
+    winsPerScene = IntArray(maxScene) { 0 }
+    visitsPerScene = IntArray(maxScene) { 0 }
+    return DefaultMDP(γ) {
+      //      var sum = 0.0
+//      for (i in 0 until maxScene)
+//        sum += exp(-visitsPerScene[i].toDouble())
+      val start = if (determinedStartScene == -1) {
+        val max = max(0 until maxScene) { visitsPerScene[it].toDouble() } + 1
+        rand(0 until maxScene) { max - visitsPerScene[it] }
+      } else
+        determinedStartScene
+//      val start = rand(0 until maxScene) { exp(-visitsPerScene[it].toDouble()) / sum }
+//      val start = Rand().nextInt(maxScene)
+      visitsPerScene[start]++
+      PlaneState(loc = plane.loc,
+                 vel = initVel,
+                 fuel = maxFuel,
+                 scene = start,
+                 nextTerminal = false)
+    }
+  }
+  
+  fun makeSpecific(): MDP {
+    numObstaclesPerScene = 8
+    sceneObstacles = Array(maxScene) {
+      arrayOf(RigidBody(Vector2(100.0 * scale, 400.0 * scale), 100.0 * scale),
+              RigidBody(Vector2(250.0 * scale, 400.0 * scale), 50.0 * scale),
+              RigidBody(Vector2(500.0 * scale, 500.0 * scale), 100.0 * scale),
+              RigidBody(Vector2(350.0 * scale, 200.0 * scale), 50.0 * scale),
+              RigidBody(Vector2(430.0 * scale, 200.0 * scale), 50.0 * scale),
+              RigidBody(Vector2(500.0 * scale, 200.0 * scale), 50.0 * scale),
+              RigidBody(Vector2(560.0 * scale, 200.0 * scale), 50.0 * scale),
+              RigidBody(Vector2(400.0 * scale, 25.0 * scale), 25.0 * scale))
     }
     winsPerScene = IntArray(maxScene) { 0 }
     visitsPerScene = IntArray(maxScene) { 0 }
