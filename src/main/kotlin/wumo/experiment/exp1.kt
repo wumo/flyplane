@@ -291,7 +291,6 @@ fun main(args: Array<String>) {
         mMax = maxOf(mMax, qvalue[s.scene][cx][cy])
         mMin = minOf(mMin, qvalue[s.scene][cx][cy])
       }
-//        qvalue[s.scene][cx][cy] = maxOf(qvalue[s.scene][cx][cy], func(s, a))
       if (episode % step_round != 0) return@step
       if (!animate && step > 1) return@step
       D2DGameUI.render { gc ->
