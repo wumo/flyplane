@@ -191,7 +191,6 @@ fun main(args: Array<String>) {
     val preWinsPerScene = IntArray(FlyPlane.maxScene)
     val winRate = DoubleArray(FlyPlane.maxScene)
     val preVisitsPerScene = IntArray(FlyPlane.maxScene)
-    val changedEpisode = IntArray(FlyPlane.maxScene)
     val αScene = DoubleArray(FlyPlane.maxScene) { _α }
     val episodeListener: EpisodeListener = { episode, step, st ->
       episodeSum++
