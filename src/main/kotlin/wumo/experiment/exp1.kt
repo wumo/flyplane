@@ -156,7 +156,7 @@ fun main(args: Array<String>) {
     s as FlyPlane.PlaneState
     a as DefaultAction<Int, FlyPlane.PlaneState>
     val floats = ArrayList<Double>(FlyPlane.numObstaclesPerScene + 4).apply {
-      add(s.loc.x / resolution);add(s.loc.y / resolution);add(s.vel.x);add(s.vel.y / PI * 16)
+      add(s.loc.x / resolution);add(s.loc.y / resolution);add(s.vel.x);add(s.vel.y / PI * 18)
       for (i in 0 until FlyPlane.numObstaclesPerScene) {
         val obstacle = FlyPlane.sceneObstacles[s.scene][i]
         add(obstacle.loc.x / resolution);add(obstacle.loc.y / resolution);add(obstacle.radius / resolution)
@@ -209,9 +209,6 @@ fun main(args: Array<String>) {
         episodeSum = 0
         last = current
       }
-//      D2DGameUI.render {
-//        D2DGameUI.title = "episode=$episode,total_step=$step\t,max=${oMax.format(2)},min=${oMin.format(2)}"
-//      }
       if (episode % episode_round == 0) {
         Platform.runLater {
           (D2DGameUI.charts[0] as AreaChartDescription).data.apply {
@@ -368,20 +365,7 @@ fun main(args: Array<String>) {
         Qfunc = func,
         π = EpsilonGreedyFunctionPolicy(func, ε),
         λ = 0.96,
-        α = { _, _ ->
-          _α / numTilings
-        },
-//        α = { startState, episode ->
-//          startState as FlyPlane.PlaneState
-//          val i = startState.scene
-//          if (winRate[i] > 0.0) {
-//            if ((episode - changedEpisode[i]) > α_episode) {
-//              αScene[i] *= 0.9
-//              changedEpisode[i] = episode
-//            }
-//          }
-//          αScene[i] / numTilings
-//        },
+        α = { _, _ -> _α / numTilings },
         episodes = max_episode,
         episodeListener = episodeListener,
         stepListener = stepListener

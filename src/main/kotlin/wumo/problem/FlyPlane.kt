@@ -16,7 +16,6 @@ object FlyPlane {
   var fieldWidth = 1350.0
   val scale = fieldWidth / 600
   private val numActions = 3
-  private val numSimulation = 1
   private val Δt = 1.0
   private val max_acc = 1.0 * scale
   val target = RigidBody(Vector2(fieldWidth - 50 * scale, 50.0 * scale), 50.0 * scale)
@@ -48,73 +47,69 @@ object FlyPlane {
               return Possible(terminalState, 0.0)
             if (collide(loc, target)) {
               winsPerScene[scene]++
-//              val nextScene = if (scene + 1 < maxScene) scene + 1 else -1
-              val nextScene = -1
-              return Possible(if (nextScene == -1) terminalState
-                              else PlaneState(plane.loc, initVel, maxFuel, nextScene, true), 0.0)
-            } else {
-              val nextLoc = loc.copy()
-              val nextVel = vel.copy()
-              val (v, θ) = nextVel
-              var nextFuel: Double
-              var nextScene = scene
-              var reward: Double
-              if (a == 0)
-                nextLoc.plus(Δt * v * cos(θ), Δt * v * sin(θ))
-              else {
-                val w = max_acc / v
-                val Δθ = w * Δt
-                val R = v * v / max_acc
-                
-                when (a) {
-                  1 -> { //left
-                    val angle = θ + PI / 2 + PI + Δθ
-                    val angle2 = θ + PI / 2
-                    val dir = Vector2(R * (cos(angle) + cos(angle2)), R * (sin(angle) + sin(angle2)))
-                    nextLoc += dir
-                    nextVel.y = (θ + Δθ) % (2 * PI)
-                  }
-                  2 -> { //right
-                    val angle = θ + PI / 2 - Δθ
-                    val angle2 = θ - PI / 2
-                    val dir = Vector2(R * (cos(angle) + cos(angle2)), R * (sin(angle) + sin(angle2)))
-                    nextLoc += dir
-                    nextVel.y = (θ - Δθ) % (2 * PI)
-                  }
+              return Possible(terminalState, 0.0)
+            }
+            val nextLoc = loc.copy()
+            val nextVel = vel.copy()
+            val (v, θ) = nextVel
+            var nextFuel: Double
+            var nextScene = scene
+            var reward: Double
+            if (a == 0)
+              nextLoc.plus(Δt * v * cos(θ), Δt * v * sin(θ))
+            else {
+              val w = max_acc / v
+              val Δθ = w * Δt
+              val R = v * v / max_acc
+              
+              when (a) {
+                1 -> { //left
+                  val angle = θ + PI / 2 + PI + Δθ
+                  val angle2 = θ + PI / 2
+                  val dir = Vector2(R * (cos(angle) + cos(angle2)), R * (sin(angle) + sin(angle2)))
+                  nextLoc += dir
+                  nextVel.y = (θ + Δθ) % (2 * PI)
                 }
-                if (nextVel.y < 0)
-                  nextVel.y = nextVel.y + 2 * PI
+                2 -> { //right
+                  val angle = θ + PI / 2 - Δθ
+                  val angle2 = θ - PI / 2
+                  val dir = Vector2(R * (cos(angle) + cos(angle2)), R * (sin(angle) + sin(angle2)))
+                  nextLoc += dir
+                  nextVel.y = (θ - Δθ) % (2 * PI)
+                }
+              }
+              if (nextVel.y < 0)
+                nextVel.y = nextVel.y + 2 * PI
 //                nextLoc += nextVel * Δt + center * (Δt * Δt * 0.5)
 //                nextVel += center * Δt
-              }
-              nextFuel = fuel - 1.0 * scale
-              val obstacles = sceneObstacles[scene]
+            }
+            nextFuel = fuel - 1.0 * scale
+            val obstacles = sceneObstacles[scene]
 //              reward = (loc.dist(target.loc) - nextLoc.dist(target.loc)) * scale
 //              reward = (loc.dist(target.loc) - nextLoc.dist(target.loc) - 0.1) * scale
 //              reward = (loc.dist(target.loc) - nextLoc.dist(target.loc)) * scale
-              reward = 0.0
-              when {
-                nextLoc.outOf(0.0, 0.0, fieldWidth, fieldWidth) ||//out of field
-                nextFuel < 0 -> {//out of fuel
-                  reward = -100.0 * scale
-                  nextScene = -1
-                }
-                collide(nextLoc, obstacles) -> {//hit obstacle
-                  reward = -100.0 * scale
-                  nextScene = -1
-                }
-                collide(nextLoc, target) -> {//hit destination
-                  reward = 2000.0 * scale - (maxFuel - nextFuel)
-//                  reward = 2000.0 * scale
-                  nextLoc.set(target.loc)
-                  nextFuel = maxFuel
-                  nextVel.set(initVel)
-                  nextScene = scene
-                }
+            reward = 0.0
+            when {
+              nextLoc.outOf(0.0, 0.0, fieldWidth, fieldWidth) ||//out of field
+              nextFuel < 0 -> {//out of fuel
+                reward = -100.0 * scale
+                nextScene = -1
               }
-              return Possible(if (nextScene == -1) terminalState
-                              else PlaneState(nextLoc, nextVel, nextFuel, nextScene, false), reward)
+              collide(nextLoc, obstacles) -> {//hit obstacle
+                reward = -100.0 * scale
+                nextScene = -1
+              }
+              collide(nextLoc, target) -> {//hit destination
+                reward = 2000.0 * scale - (maxFuel - nextFuel)
+//                  reward = 2000.0 * scale
+                nextLoc.set(target.loc)
+                nextFuel = maxFuel
+                nextVel.set(initVel)
+                nextScene = scene
+              }
             }
+            return Possible(if (nextScene == -1) terminalState
+                            else PlaneState(nextLoc, nextVel, nextFuel, nextScene, false), reward)
           })
         }
     
